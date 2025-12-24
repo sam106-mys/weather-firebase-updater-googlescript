@@ -1,0 +1,83 @@
+#include <WiFi.h>
+#include <WiFiClientSecure.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+// WiFi credentials
+const char* ssid = "ENTER_WIFI_NAME";
+const char* password = "ENTER_PASSOWRD";
+
+// Firebase URL (must end with .json)
+const char* firebaseURL =
+"ENTER_FIREBASE_URL";
+
+void setup() {
+  Serial.begin(115200);
+
+  // I2C init
+  Wire.begin(21, 22);
+
+  // LCD init
+  lcd.init();
+  lcd.backlight();
+  lcd.print("Connecting...");
+
+  // WiFi connect
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  lcd.clear();
+  lcd.print("WiFi Connected");
+  delay(1000);
+}
+
+void loop() {
+  if (WiFi.status() == WL_CONNECTED) {
+
+    WiFiClientSecure client;
+    client.setInsecure();   // required for Firebase HTTPS
+
+    HTTPClient http;
+    http.begin(client, firebaseURL);
+
+    int httpCode = http.GET();
+    Serial.println("HTTP Code: " + String(httpCode));
+
+    if (httpCode == 200) {
+      String payload = http.getString();
+      Serial.println(payload);
+
+      DynamicJsonDocument doc(512);
+      deserializeJson(doc, payload);
+
+      float temp = doc["temp"];
+      int humidity = doc["humidity"];
+      String condition = doc["condition"];
+
+      lcd.setCursor(0, 0);
+      lcd.print("T:      C H:   ");  // clear line manually
+      lcd.setCursor(0, 0);
+      lcd.print("T:");
+      lcd.print(temp, 1);
+      lcd.print("C H:");
+      lcd.print(humidity);
+
+      lcd.setCursor(0, 1);
+      lcd.print("                "); // clear second line
+      lcd.setCursor(0, 1);
+      lcd.print(condition);
+
+    }
+
+    http.end();
+  }
+
+  delay(10000);  // update every 10 sec
+}
