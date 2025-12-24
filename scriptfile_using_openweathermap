@@ -1,0 +1,44 @@
+/*********** CONFIG ***********/
+const API_KEY = "ENTER_YOUR_API_KEY_HERE";
+const CITY = "PLACE";
+const FIREBASE_URL =
+  "ENTER_FIREBASE_URL";
+
+/*********** MAIN FUNCTION ***********/
+function updateWeatherToFirebase() {
+  const url =
+    "https://api.openweathermap.org/data/2.5/weather?q=" +
+    CITY +
+    "&appid=" +
+    API_KEY +
+    "&units=metric";
+
+  try {
+    const response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    const data = JSON.parse(response.getContentText());
+
+    if (!data.main) {
+      console.log("Invalid API response:", data);
+      return;
+    }
+
+    const payload = {
+      temp: data.main.temp,
+      humidity: data.main.humidity,
+      condition: data.weather[0].main,
+      updated_at: new Date().toLocaleString("en-IN", {
+        timeZone: "Asia/Kolkata",
+      }),
+    };
+
+    UrlFetchApp.fetch(FIREBASE_URL, {
+      method: "put",
+      contentType: "application/json",
+      payload: JSON.stringify(payload),
+    });
+
+    console.log("Firebase updated:", payload);
+  } catch (err) {
+    console.log("Error:", err);
+  }
+}
